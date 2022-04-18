@@ -8,8 +8,8 @@ import random
 enemytimer = 200
 SCREEN_WIDTH = 1600
 SCREEN_HEIGHT = 1000
-BULLET_TIMER = 5
-BULLET_SPEED = 15
+BULLET_TIMER = 10
+BULLET_SPEED = 6
 PLAYER_MOV_SPEED = 5
 ENEMY_SPAWN_RATE = 5
 ENEMY_SPEED_MULT = 1.2
@@ -69,7 +69,7 @@ class NormalBullet(Bullet):
 class SlimeEnemy(Enemy):
     def __init__(self):
         # Set up parent class
-        super().__init__("smith.png", 3)
+        super().__init__("slimemonsteridle1.png", 1.4)
 
 class Arm(Entity):
     def __init__(self, name_file, szise):
@@ -263,45 +263,16 @@ class MyGame(arcade.Window):
                 
 
                 if closestenemyleft != None:
-                    for arm in self.scene[self.left_arm_list]:
-                        bulletleft = NormalBullet()
-                        bulletleft.center_x = arm.center_x
-                        bulletleft.center_y = arm.center_y
-                        vectorx = arm.center_x - closestenemyleft[1].center_x
-                        vectory = arm.center_y - closestenemyleft[1].center_y
-                        
-                        lengthab = math.sqrt(vectorx * vectorx + vectory * vectory)
-                        unitvectorx = vectorx / lengthab
-                        unitvectory = vectory / lengthab
-
-                        bulletleft.change_x = -(unitvectorx * BULLET_SPEED)
-                        bulletleft.change_y = -(unitvectory * BULLET_SPEED)
-                            
-                        self.bullettimer = 0
-                        self.scene.add_sprite(self.bullet_list, bulletleft)
-                    else:
-                        self.bullettimer = 0
-
+                    self.shoot_bullet_from_arm(self.left_arm_list, closestenemyleft, NormalBullet())
+                    self.bullettimer = 0
+                else:
+                    self.bullettimer = 0
+                    
                 if closestenemyright != None:
-                    for arm in self.scene[self.right_arm_list]:
-                        bulletright = NormalBullet()
-                        bulletright.center_x = arm.center_x
-                        bulletright.center_y = arm.center_y
-                        vectorx = arm.center_x - closestenemyright[1].center_x
-                        vectory = arm.center_y - closestenemyright[1].center_y
-                        
-                        lengthab = math.sqrt(vectorx * vectorx + vectory * vectory)
-                        unitvectorx = vectorx / lengthab
-                        unitvectory = vectory / lengthab
-
-                        bulletright.change_x = -(unitvectorx * BULLET_SPEED)
-                        bulletright.change_y = -(unitvectory * BULLET_SPEED)
-                        
-                        self.bullettimer = 0
-                        self.scene.add_sprite(self.bullet_list, bulletright)
-
-                    else:
-                        self.bullettimer = 0
+                    self.shoot_bullet_from_arm(self.right_arm_list, closestenemyright, NormalBullet())
+                    self.bullettimer = 0
+                else:
+                    self.bullettimer = 0
         
             
 
@@ -361,11 +332,11 @@ class MyGame(arcade.Window):
                             vectorbetweenx = enemy.center_x - enemy2.center_x
                             vectorbetweeny = enemy.center_y - enemy2.center_y
 
-                            enemy.change_x = vectorbetweenx/4
-                            enemy.change_y = vectorbetweeny/4
+                            enemy.change_x = vectorbetweenx/8
+                            enemy.change_y = vectorbetweeny/8
 
-                            enemy2.change_x = -vectorbetweenx/4
-                            enemy2.change_y = -vectorbetweeny/4
+                            enemy2.change_x = -vectorbetweenx/8
+                            enemy2.change_y = -vectorbetweeny/8
                             
             self.enemycollisioncheckticker = 0
         
@@ -428,6 +399,24 @@ class MyGame(arcade.Window):
         player_centered = screen_center_x, screen_center_y
 
         self.camera.move_to(player_centered)
+
+    def shoot_bullet_from_arm(self, armlist, closestenemy, bullettype):
+        for arm in self.scene[armlist]:
+            bullet = bullettype
+            bullet.center_x = arm.center_x
+            bullet.center_y = arm.center_y
+            vectorx = arm.center_x - closestenemy[1].center_x
+            vectory = arm.center_y - closestenemy[1].center_y
+            
+            lengthab = math.sqrt(vectorx * vectorx + vectory * vectory)
+            unitvectorx = vectorx / lengthab
+            unitvectory = vectory / lengthab
+
+            bullet.change_x = -(unitvectorx * BULLET_SPEED)
+            bullet.change_y = -(unitvectory * BULLET_SPEED)
+            
+            self.bullettimer = 0
+            self.scene.add_sprite(self.bullet_list, bullet)
 
     def process_keychange(self):
         if self.right_pressed:
