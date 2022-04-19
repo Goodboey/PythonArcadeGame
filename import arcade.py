@@ -8,11 +8,14 @@ import random
 enemytimer = 200
 SCREEN_WIDTH = 1600
 SCREEN_HEIGHT = 1000
-BULLET_TIMER = 10
-BULLET_SPEED = 6
-PLAYER_MOV_SPEED = 5
+BULLET_TIMER = 3
+BULLET_SPEED = 3
+PLAYER_MOV_SPEED = 2
 ENEMY_SPAWN_RATE = 5
 ENEMY_SPEED_MULT = 1.2
+RIGHT_FACING = 0
+LEFT_FACING = 1
+CHARACTER_SCALING = 3
 
 class Entity(arcade.Sprite):
     def __init__(self, name_file, szise):
@@ -69,7 +72,24 @@ class NormalBullet(Bullet):
 class SlimeEnemy(Enemy):
     def __init__(self):
         # Set up parent class
-        super().__init__("slimemonsteridle1.png", 1.4)
+        super().__init__("slimemonsteridle1.png", 1.7)
+        self.enemy_face_direction = RIGHT_FACING
+        self.scaling = 1.7
+        main_path = "slimemonsteridle1.png"
+        # Load textures for idle standing
+        self.textures = load_texture_pair(main_path)
+        self.texture = self.textures[0]
+        # Set the initial texture
+
+    def update_animation(self, delta_time: float = 1 / 60):
+
+        # Figure out if we need to flip face left or right
+        if self.change_x < 0 and self.enemy_face_direction == RIGHT_FACING:
+            self.enemy_face_direction = LEFT_FACING
+        elif self.change_x > 0 and self.enemy_face_direction == LEFT_FACING:
+            self.enemy_face_direction = RIGHT_FACING
+
+        self.texture = self.textures[self.enemy_face_direction]
 
 class Arm(Entity):
     def __init__(self, name_file, szise):
@@ -83,6 +103,38 @@ class UziArmLeft(Arm):
 class UziArmRight(Arm):
     def __init__(self):
         super().__init__("pogmanuziarm.png", 2.5)
+
+class PlayerCharacter(arcade.Sprite):
+    """Player Sprite"""
+
+    def __init__(self):
+
+        # Set up parent class
+        super().__init__()
+
+        # Default to face-right
+        self.character_face_direction = RIGHT_FACING
+
+        # Used for flipping between image sequences
+        self.cur_texture = 0
+        self.scale = CHARACTER_SCALING
+
+        main_path = "pogman.png"
+
+        # Load textures for idle standing
+        self.textures = load_texture_pair(main_path)
+        self.texture = self.textures[0]
+        # Set the initial texture
+
+    def update_animation(self, delta_time: float = 1 / 60):
+
+        # Figure out if we need to flip face left or right
+        if self.change_x < 0 and self.character_face_direction == RIGHT_FACING:
+            self.character_face_direction = LEFT_FACING
+        elif self.change_x > 0 and self.character_face_direction == LEFT_FACING:
+            self.character_face_direction = RIGHT_FACING
+
+        self.texture = self.textures[self.character_face_direction]
 
 
 class MyGame(arcade.Window):
@@ -106,6 +158,8 @@ class MyGame(arcade.Window):
 
         self.scene = None
 
+ 
+
 
     def setup(self):
         # Set up your game here
@@ -119,14 +173,14 @@ class MyGame(arcade.Window):
         self.wall_list = arcade.SpriteList()
         self.coin_list = arcade.SpriteList()
         self.scene = arcade.Scene()
-        self.player_sprite = arcade.Sprite("pogman.png", 3)
+        self.player_sprite = PlayerCharacter()
         self.player_sprite.center_x = SCREEN_WIDTH/2
         self.player_sprite.center_y = SCREEN_HEIGHT/2
-        self.player_list.append(self.player_sprite)
         arm = UziArmLeft()
         self.scene.add_sprite(self.left_arm_list, arm)
         arm = UziArmRight()
         self.scene.add_sprite(self.right_arm_list, arm)
+        self.scene.add_sprite(self.player_list, self.player_sprite)
         self.score = 0
         
         self.coinsAlive = 0
@@ -142,13 +196,13 @@ class MyGame(arcade.Window):
         arcade.draw_lrwh_rectangle_textured(0, 0, 12000, 12000, self.background)
         self.camera.use()
         self.scene.draw()
+        self.left_arm_list.draw()
+        self.right_arm_list.draw()
         self.player_list.draw()
         self.enemy_list.draw()
         self.bullet_list.draw()
-        self.left_arm_list.draw()
-        self.right_arm_list.draw()
         self.coin_list.draw()
-        score_text = f"Score: {self.score}"
+        score_text = f"GEMZ: {self.score}"
         self.gui_camera.use()
         arcade.draw_text(
             score_text,
@@ -384,7 +438,8 @@ class MyGame(arcade.Window):
         self.enemytimer += 1
         self.enemycollisioncheckticker += 1
         self.bullettimer += 1
-        
+        self.scene.update_animation(delta_time, self.player_list)
+        self.scene.update_animation(delta_time, self.enemy_list)
         pass
 
     def center_camera_to_player(self):
