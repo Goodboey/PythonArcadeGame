@@ -8,10 +8,10 @@ import random
 enemytimer = 200
 SCREEN_WIDTH = 1600
 SCREEN_HEIGHT = 1000
-BULLET_TIMER = 3
-BULLET_SPEED = 3
+BULLET_TIMER = 1
+BULLET_SPEED = 5
 PLAYER_MOV_SPEED = 2
-ENEMY_SPAWN_RATE = 5
+ENEMY_SPAWN_RATE = 1
 ENEMY_SPEED_MULT = 1.2
 RIGHT_FACING = 0
 LEFT_FACING = 1
@@ -152,7 +152,11 @@ class MyGame(arcade.Window):
         self.right_pressed = False
         self.up_pressed = False
         self.down_pressed = False
+        self.space_pressed = False
         self.background = None
+        self.aimbotcrazy = False
+        self.aimbotcounterleft = 0
+        self.aimbotcounterright = 0
         arcade.set_background_color(arcade.color.AIR_FORCE_BLUE)
 
 
@@ -288,46 +292,99 @@ class MyGame(arcade.Window):
                             inrads = 2*math.pi-inrads
                         
                         arm.radians = inrads
-
+        print(self.aimbotcrazy)
         # We shoot out bullets at the closest enemy, we don't work with any square roots, as we dont care about the actual distance.
         # So calculation shouldn't be so bad.
         if (self.bullettimer == BULLET_TIMER):
             
             if len(self.scene[self.enemy_list]) > 0:
-                lengthguyright = []
-                lengthguyleft = []
-                closestenemyright = None
-                closestenemyleft = None
-                for enemy in self.scene[self.enemy_list]:
-                    if enemy.center_x > self.player_sprite.center_x:
-                        vectorx =  enemy.center_x - self.player_sprite.center_x
-                        vectory =  enemy.center_y - self.player_sprite.center_y
-                        lengthab = vectorx * vectorx + vectory * vectory
-                        lengthguyright.append([lengthab, enemy])
-                        lengthguyright.sort(key=lambda x: x[0])
-                        closestenemyright = lengthguyright[0]
-                    else:
-                        vectorx =  enemy.center_x - self.player_sprite.center_x
-                        vectory =  enemy.center_y - self.player_sprite.center_y
-                        lengthab = vectorx * vectorx + vectory * vectory
-                        lengthguyleft.append([lengthab, enemy])
-                        lengthguyleft.sort(key=lambda x: x[0])
-                        closestenemyleft = lengthguyleft[0]
+                
+                
+                
+                if not self.aimbotcrazy:
+                    lengthguyright = []
+                    lengthguyleft = []
+                    closestenemyright = None
+                    closestenemyleft = None
+                    for enemy in self.scene[self.enemy_list]:
+                        if enemy.center_x > self.player_sprite.center_x:
+                            vectorx =  enemy.center_x - self.player_sprite.center_x
+                            vectory =  enemy.center_y - self.player_sprite.center_y
+                            lengthab = vectorx * vectorx + vectory * vectory
+                            lengthguyright.append([lengthab, enemy])
+                            lengthguyright.sort(key=lambda x: x[0])
+                            closestenemyright = lengthguyright[0]
+                        else:
+                            vectorx =  enemy.center_x - self.player_sprite.center_x
+                            vectory =  enemy.center_y - self.player_sprite.center_y
+                            lengthab = vectorx * vectorx + vectory * vectory
+                            lengthguyleft.append([lengthab, enemy])
+                            lengthguyleft.sort(key=lambda x: x[0])
+                            closestenemyleft = lengthguyleft[0]
                         
                 
 
-                if closestenemyleft != None:
-                    self.shoot_bullet_from_arm(self.left_arm_list, closestenemyleft, NormalBullet())
-                    self.bullettimer = 0
-                else:
-                    self.bullettimer = 0
+                    if closestenemyleft != None:
+                        self.shoot_bullet_from_arm(self.left_arm_list, closestenemyleft, NormalBullet())
+                        self.bullettimer = 0
+                    else:
+                        self.bullettimer = 0
+                        
+                    if closestenemyright != None:
+                        self.shoot_bullet_from_arm(self.right_arm_list, closestenemyright, NormalBullet())
+                        self.bullettimer = 0
+                    else:
+                        self.bullettimer = 0
                     
-                if closestenemyright != None:
-                    self.shoot_bullet_from_arm(self.right_arm_list, closestenemyright, NormalBullet())
-                    self.bullettimer = 0
-                else:
-                    self.bullettimer = 0
-        
+                if self.aimbotcrazy:
+                    lengthguyright = []
+                    lengthguyleft = []
+                    closestenemyright = None
+                    closestenemyleft = None
+                    for enemy in self.scene[self.enemy_list]:
+                            if enemy.center_x > self.player_sprite.center_x:
+                                vectorx =  enemy.center_x - self.player_sprite.center_x
+                                vectory =  enemy.center_y - self.player_sprite.center_y
+                                lengthab = vectorx * vectorx + vectory * vectory
+                                lengthguyright.append([lengthab, enemy])
+                                
+                            else:
+                                vectorx =  enemy.center_x - self.player_sprite.center_x
+                                vectory =  enemy.center_y - self.player_sprite.center_y
+                                lengthab = vectorx * vectorx + vectory * vectory
+                                lengthguyleft.append([lengthab, enemy])
+                                
+
+                    if self.aimbotcounterleft < len(lengthguyleft) and self.aimbotcounterright < len(lengthguyright):
+                        
+                        closestenemyright = lengthguyright[self.aimbotcounterright]
+                        closestenemyleft = lengthguyleft[self.aimbotcounterleft]
+
+                        if closestenemyleft != None:
+                            self.shoot_bullet_from_arm(self.left_arm_list, closestenemyleft, NormalBullet())
+                            self.bullettimer = 0
+                            self.aimbotcounterleft += 1
+                        else:
+                            self.bullettimer = 0
+                            self.aimbotcounterleft = 0
+                            
+                        if closestenemyright != None:
+                            self.shoot_bullet_from_arm(self.right_arm_list, closestenemyright, NormalBullet())
+                            self.aimbotcounterright += 1
+                            self.bullettimer = 0
+                        else:
+                            self.bullettimer = 0
+                            self.aimbotcounterright = 0                        
+
+                        self.bullettimer = 0
+                        
+                        
+
+                    else:
+
+                        self.bullettimer = 0
+                        self.aimbotcounterleft = 0
+                        self.aimbotcounterright = 0        
             
 
 
@@ -486,6 +543,10 @@ class MyGame(arcade.Window):
             self.player_sprite.change_x = 0
         if not self.down_pressed and not self.up_pressed:
             self.player_sprite.change_y = 0
+        if self.space_pressed:
+            self.aimbotcrazy = True
+        if not self.space_pressed:
+            self.aimbotcrazy = False
 
     def on_key_press(self, key, modifiers):
         """Called whenever a key is pressed."""
@@ -498,6 +559,8 @@ class MyGame(arcade.Window):
             self.left_pressed = True
         elif key == arcade.key.RIGHT or key == arcade.key.D:
             self.right_pressed = True
+        elif key == arcade.key.SPACE:
+            self.space_pressed = True
         
         self.process_keychange()
 
@@ -512,7 +575,8 @@ class MyGame(arcade.Window):
             self.left_pressed = False
         elif key == arcade.key.RIGHT or key == arcade.key.D:
             self.right_pressed = False
-
+        elif key == arcade.key.SPACE:
+            self.space_pressed = False
         self.process_keychange()
             
 
