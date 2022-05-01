@@ -10,16 +10,14 @@ import numpy as np
 enemytimer = 200
 SCREEN_WIDTH = 1600
 SCREEN_HEIGHT = 1000
-BULLET_TIMER = 0
+BULLET_TIMER = 1
 BULLET_SPEED = 5
 PLAYER_MOV_SPEED = 2
 ENEMY_SPAWN_RATE = 1
 ENEMY_SPEED_MULT = 1.2
 RIGHT_FACING = 0
 LEFT_FACING = 1
-FRONT_FACING = 2
-BACK_FACING = 3
-CHARACTER_SCALING = 3
+CHARACTER_SCALING = 2.2
 isProfiling = False
 
 class Entity(arcade.Sprite):
@@ -131,17 +129,17 @@ class PlayerCharacter(arcade.Sprite):
         super().__init__()
 
         # Default to face-right
-        self.character_face_direction = FRONT_FACING
+        self.character_face_direction = LEFT_FACING
 
         # Used for flipping between image sequences
         self.cur_texture = 0
         self.scale = CHARACTER_SCALING
 
-        main_path = "pogman.png"
+        main_path = "Aimbotjim.png"
 
         # Load textures for idle standing
-        self.textures = load_texture_pair(main_path, 'pogmanfront.png', 'pogmanback.png')
-        self.texture = self.textures[2]
+        self.textures = load_texture_pair_old(main_path)
+        self.texture = self.textures[0]
         # Set the initial texture
 
     def update_animation(self, delta_time: float = 1 / 60):
@@ -151,10 +149,6 @@ class PlayerCharacter(arcade.Sprite):
             self.character_face_direction = LEFT_FACING
         elif self.change_x > 0 and self.character_face_direction != RIGHT_FACING:
             self.character_face_direction = RIGHT_FACING
-        elif self.change_y < 0 and self.character_face_direction != FRONT_FACING:
-            self.character_face_direction = FRONT_FACING
-        elif self.change_y > 0 and self.character_face_direction != BACK_FACING:
-            self.character_face_direction = BACK_FACING
 
         self.texture = self.textures[self.character_face_direction]
 
@@ -614,14 +608,19 @@ class MyGame(arcade.Window):
                 # We already project a point from enemy1, we use this and check if it is inside of another
                 # hitbox, before we apply the velocity.
                 
-            point = (enemy.center_x+unitvectorx*(enemy.width/2), enemy.center_y+unitvectory*(enemy.height/2))
+            pointx = enemy.center_x+unitvectorx*(enemy.width/2) 
+            pointy = enemy.center_y+unitvectory*(enemy.height/2)
             #arcade.draw_point(enemy.center_x+unitvectorx*(enemy.width/2),enemy.center_y+unitvectory*(enemy.height/2), arcade.color.RED,10.0)
             
             for enemyinfront in self.scene[self.enemy_list]:
                 
                 if enemy != enemyinfront:
-                    if enemyinfront.collides_with_point(point):
+                    pointdist = (pointx * enemyinfront.center_x)**2 - (pointy * enemyinfront.center_y)**2
+                    if (pointdist <= enemy.width):
                         enemyinpoint = True
+                        print(enemy.width**2)
+                        print(pointdist)
+                        print('collision hey')
                         break
                 
                 
