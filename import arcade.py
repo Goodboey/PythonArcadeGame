@@ -1,24 +1,29 @@
 import cProfile
 from pstats import Stats, SortKey
+from tkinter.tix import MAIN
 import arcade
 import math
 import sys
 import random
+from cv2 import FONT_HERSHEY_SCRIPT_COMPLEX
 import numpy as np
 
 
 enemytimer = 200
-SCREEN_WIDTH = 1600
-SCREEN_HEIGHT = 1000
-BULLET_TIMER = 1
-BULLET_SPEED = 5
+SCREEN_WIDTH = 1280
+SCREEN_HEIGHT = 720
+BULLET_TIMER = 0
+BULLET_SPEED = 15
 PLAYER_MOV_SPEED = 2
-ENEMY_SPAWN_RATE = 1
+ENEMY_SPAWN_RATE = 10
 ENEMY_SPEED_MULT = 1.2
 RIGHT_FACING = 0
 LEFT_FACING = 1
-CHARACTER_SCALING = 2.2
+CHARACTER_SCALING = 1.5
 isProfiling = False
+GUNSHOT_SOUND = arcade.load_sound('Gunshot.wav',False)
+MAIN_THEME = arcade.load_sound('AimbotMaintheme.wav')
+GAME_OVER = arcade.load_sound('gameover.wav')
 
 class Entity(arcade.Sprite):
     def __init__(self, name_file, szise):
@@ -82,12 +87,12 @@ class Rupee(Loot):
 class NormalBullet(Bullet):
     def __init__(self):
         
-        super().__init__("Normalbullet.png", 1)
+        super().__init__("Normalbullet.png", 0.7)
 
 class SlimeEnemy(Enemy):
     def __init__(self):
         # Set up parent class
-        super().__init__("slimemonsteridle1.png", 1.7)
+        super().__init__("slimemonsteridle1.png", 1)
         self.enemy_face_direction = RIGHT_FACING
         self.scaling = 1.7
         self.iscolliding = False
@@ -114,11 +119,23 @@ class Arm(Entity):
 
 class UziArmLeft(Arm):
     def __init__(self):
-        super().__init__("pogmanuziarm2.png", 3)
+        super().__init__("pogmanuziarm2.png", 1.7)
 
 class UziArmRight(Arm):
     def __init__(self):
-        super().__init__("pogmanuziarm.png", 3)
+        super().__init__("pogmanuziarm.png", 1.7)
+
+class GameOverView(arcade.View):
+    def on_show(self):
+        
+        arcade.play_sound(GAME_OVER, 0.2,looping= False)
+
+    def on_draw(self):
+        self.clear()
+        arcade.draw_rectangle_filled(center_x=SCREEN_WIDTH/2,center_y=SCREEN_HEIGHT/2, width=10000, height=10000,color= arcade.color.DARK_RED)
+        arcade.draw_text('GAME OVER',start_x= SCREEN_WIDTH/6,start_y= SCREEN_HEIGHT/2, font_name='FONT_HERSHEY_SCRIPT_COMPLEX',font_size= 100)
+        
+
 
 class PlayerCharacter(arcade.Sprite):
     """Player Sprite"""
@@ -153,11 +170,11 @@ class PlayerCharacter(arcade.Sprite):
         self.texture = self.textures[self.character_face_direction]
 
 
-class MyGame(arcade.Window):
+class GameView(arcade.View):
     """ Main application class. """
 
-    def __init__(self, width, height):
-        super().__init__(width, height, "Pogman")
+    def __init__(self):
+        super().__init__()
 
         self.camera = None
 
@@ -185,7 +202,7 @@ class MyGame(arcade.Window):
     def setup(self):
         # Set up your game here
         self.background = arcade.load_texture('Concretebackground.jpg')
-        self.gui_camera = arcade.Camera(self.width, self.height)
+        self.gui_camera = arcade.Camera(SCREEN_WIDTH, SCREEN_HEIGHT)
         self.enemy_list = arcade.SpriteList()
         self.player_list = arcade.SpriteList()
         
@@ -207,6 +224,8 @@ class MyGame(arcade.Window):
         self.coinsAlive = 0
         self.bullet_list = arcade.SpriteList()
         self.physics_engine = arcade.PhysicsEngineSimple(self.player_sprite, self.enemy_list)
+        self.main_track = arcade.Sound.play(MAIN_THEME, 0.2, True)
+        
         pass
 
 
@@ -214,7 +233,7 @@ class MyGame(arcade.Window):
         """ Render the screen. """
         self.clear()
         arcade.start_render()
-        arcade.draw_lrwh_rectangle_textured(0, 0, 12000, 12000, self.background)
+        arcade.draw_lrwh_rectangle_textured(0, 0, 4000, 4000, self.background)
         self.camera.use()
         self.scene.draw()
         self.left_arm_list.draw()
@@ -237,7 +256,7 @@ class MyGame(arcade.Window):
     def on_update(self, delta_time):
         """ All the logic to move, and the game logic goes here. """
         self.physics_engine.update()
-        self.camera = arcade.Camera(self.width, self.height)
+        self.camera = arcade.Camera(SCREEN_WIDTH, SCREEN_HEIGHT)
         self.scene.update(self.bullet_list)
         #self.scene.update(self.arm_list)
         # We draw a long line of height^2 + length^2 and then project this line around the player to randomly spawn an enemy, and not getting like a gaussian dist
@@ -264,6 +283,7 @@ class MyGame(arcade.Window):
             self.enemytimer = 0
         
         if len(self.scene[self.enemy_list]) > 0:
+            if not self.aimbotcrazy:
                 lengthguyright = []
                 lengthguyleft = []
                 closestenemyright = None
@@ -309,6 +329,7 @@ class MyGame(arcade.Window):
                             inrads = 2*math.pi-inrads
                         
                         arm.radians = inrads
+                
 
         # We shoot out bullets at the closest enemy, we don't work with any square roots, as we dont care about the actual distance.
         # So calculation shouldn't be so bad.
@@ -339,15 +360,35 @@ class MyGame(arcade.Window):
                             lengthguyleft.sort(key=lambda x: x[0])
                             closestenemyleft = lengthguyleft[0]
                         
-                
-
                     if closestenemyleft != None:
+                        for arm in self.scene[self.left_arm_list]:
+                            vectorx = arm.center_x - closestenemyleft[1].center_x
+                            vectory = arm.center_y - closestenemyleft[1].center_y
+                            
+                            inrads = math.atan2(vectorx, vectory)
+                            if inrads < 0:
+                                inrads = abs(inrads)
+                            else:
+                                inrads = 2*math.pi-inrads
+                            
+                            arm.radians = inrads
                         self.shoot_bullet_from_arm(self.left_arm_list, closestenemyleft, NormalBullet())
                         self.bullettimer = 0
                     else:
                         self.bullettimer = 0
                         
                     if closestenemyright != None:
+                        for arm in self.scene[self.right_arm_list]:
+                            vectorx = arm.center_x - closestenemyright[1].center_x
+                            vectory = arm.center_y - closestenemyright[1].center_y
+
+                            inrads = math.atan2(vectorx, vectory)
+                            if inrads < 0:
+                                inrads = abs(inrads)
+                            else:
+                                inrads = 2*math.pi-inrads
+                            
+                            arm.radians = inrads
                         self.shoot_bullet_from_arm(self.right_arm_list, closestenemyright, NormalBullet())
                         self.bullettimer = 0
                     else:
@@ -379,6 +420,17 @@ class MyGame(arcade.Window):
                         closestenemyleft = lengthguyleft[self.aimbotcounterleft]
 
                         if closestenemyleft != None:
+                            for arm in self.scene[self.left_arm_list]:
+                                vectorx = arm.center_x - closestenemyleft[1].center_x
+                                vectory = arm.center_y - closestenemyleft[1].center_y
+                                
+                                inrads = math.atan2(vectorx, vectory)
+                                if inrads < 0:
+                                    inrads = abs(inrads)
+                                else:
+                                    inrads = 2*math.pi-inrads
+                            
+                                arm.radians = inrads
                             self.shoot_bullet_from_arm(self.left_arm_list, closestenemyleft, NormalBullet())
                             self.bullettimer = 0
                             self.aimbotcounterleft += 1
@@ -388,6 +440,17 @@ class MyGame(arcade.Window):
                             self.aimbotcounterleft = 0
                             
                         if closestenemyright != None:
+                            for arm in self.scene[self.right_arm_list]:
+                                vectorx = arm.center_x - closestenemyright[1].center_x
+                                vectory = arm.center_y - closestenemyright[1].center_y
+
+                                inrads = math.atan2(vectorx, vectory)
+                                if inrads < 0:
+                                    inrads = abs(inrads)
+                                else:
+                                    inrads = 2*math.pi-inrads
+                                
+                                arm.radians = inrads
                             self.shoot_bullet_from_arm(self.right_arm_list, closestenemyright, NormalBullet())
                             self.aimbotcounterright += 1
                             self.bullettimer = 0
@@ -418,16 +481,18 @@ class MyGame(arcade.Window):
         
         # If an enemy hits score_text = f"Score: {self.score}"
         #TODO: Make it a bit cooler
-        #if len(enemy_hit_list) > 0:
-        #    sys.exit()
+        if len(enemy_hit_list) > 0:
+            arcade.Sound.stop(MAIN_THEME, self.main_track)
+            game_over_view = GameOverView()
+            self.window.show_view(game_over_view)
         
         for arm in self.scene[self.left_arm_list]:
             arm.center_x = self.player_sprite.center_x-10
-            arm.center_y = self.player_sprite.center_y+7
+            arm.center_y = self.player_sprite.center_y
 
         for arm in self.scene[self.right_arm_list]:
             arm.center_x = self.player_sprite.center_x+10
-            arm.center_y = self.player_sprite.center_y+7
+            arm.center_y = self.player_sprite.center_y
         
         # Removing bullets if they hit an enemy, and handling what the enemy should do if a bullet hits them.
         if len(self.scene[self.bullet_list])>0:
@@ -506,11 +571,6 @@ class MyGame(arcade.Window):
         screen_center_x = self.player_sprite.center_x - (self.camera.viewport_width / 2)
         screen_center_y = self.player_sprite.center_y - (self.camera.viewport_height / 2)
 
-        # avoiding zero
-        if screen_center_x < 0:
-            screen_center_x = 0
-        if screen_center_y < 0:
-            screen_center_y = 0
         player_centered = screen_center_x, screen_center_y
 
         self.camera.move_to(player_centered)
@@ -519,8 +579,7 @@ class MyGame(arcade.Window):
         #TODO: This list will always contain one value, so maybe add more arms? or make the armlist a single object and delete forloop? :O
         for arm in self.scene[armlist]:
             bullet = bullettype
-            bullet.center_x = arm.center_x
-            bullet.center_y = arm.center_y
+            
             vectorx = arm.center_x - closestenemy[1].center_x
             vectory = arm.center_y - closestenemy[1].center_y
             
@@ -533,10 +592,14 @@ class MyGame(arcade.Window):
             unitvectorx = vectorx * ratio
             unitvectory = vectory * ratio
 
+            bullet.center_x = arm.center_x - unitvectorx*35
+            bullet.center_y = arm.center_y - unitvectory*35
+            
             bullet.change_x = -(unitvectorx * BULLET_SPEED)
             bullet.change_y = -(unitvectory * BULLET_SPEED)
             
             self.bullettimer = 0
+            arcade.play_sound(GUNSHOT_SOUND, random.randint(50,100)/300)
             self.scene.add_sprite(self.bullet_list, bullet)
 
     def process_keychange(self):
@@ -605,33 +668,12 @@ class MyGame(arcade.Window):
             unitvectorx = vectorx * ratio
             unitvectory = vectory * ratio
 
-                # We already project a point from enemy1, we use this and check if it is inside of another
-                # hitbox, before we apply the velocity.
+            # We already project a point from enemy1, we use this and check if it is inside of another
+            # hitbox, before we apply the velocity.
                 
-            pointx = enemy.center_x+unitvectorx*(enemy.width/2) 
-            pointy = enemy.center_y+unitvectory*(enemy.height/2)
-            #arcade.draw_point(enemy.center_x+unitvectorx*(enemy.width/2),enemy.center_y+unitvectory*(enemy.height/2), arcade.color.RED,10.0)
             
-            for enemyinfront in self.scene[self.enemy_list]:
-                
-                if enemy != enemyinfront:
-                    pointdist = (pointx * enemyinfront.center_x)**2 - (pointy * enemyinfront.center_y)**2
-                    if (pointdist <= enemy.width):
-                        enemyinpoint = True
-                        print(enemy.width**2)
-                        print(pointdist)
-                        print('collision hey')
-                        break
-                
-                
-                        
-            
-            if enemyinpoint:
-                enemy.change_x = 0
-                enemy.change_y = 0
-            else:    
-                enemy.change_x = unitvectorx*ENEMY_SPEED_MULT
-                enemy.change_y = unitvectory*ENEMY_SPEED_MULT
+            enemy.change_x = unitvectorx*ENEMY_SPEED_MULT
+            enemy.change_y = unitvectory*ENEMY_SPEED_MULT
             
 
 def main():
@@ -647,8 +689,10 @@ def main():
             stats.dump_stats('.prof_stats')
             stats.print_stats()
     else:
-        game = MyGame(SCREEN_WIDTH, SCREEN_HEIGHT)
-        game.setup()
+        window = arcade.Window(SCREEN_WIDTH, SCREEN_HEIGHT, "Pogman")
+        startview = GameView()
+        window.show_view(startview)
+        startview.setup()
         arcade.run()
 
 
