@@ -10,10 +10,10 @@ import numpy as np
 enemytimer = 200
 SCREEN_WIDTH = 1600
 SCREEN_HEIGHT = 1000
-BULLET_TIMER = 1
+BULLET_TIMER = 20
 BULLET_SPEED = 5
 PLAYER_MOV_SPEED = 2
-ENEMY_SPAWN_RATE = 1
+ENEMY_SPAWN_RATE = 10
 ENEMY_SPEED_MULT = 1.2
 RIGHT_FACING = 0
 LEFT_FACING = 1
@@ -45,18 +45,6 @@ def load_texture_pair_old(filename):
         arcade.load_texture(filename, flipped_horizontally=True)
     ]
 
-def load_texture_pair(filename, filename2, filename3):
-    """
-    Load a texture pair, with the second being a mirror image.
-    """
-    return [
-        arcade.load_texture(filename),
-        arcade.load_texture(filename, flipped_horizontally=True),
-        arcade.load_texture(filename2),
-        arcade.load_texture(filename3)
-    ]
-
-
 class Enemy(Entity):
     def __init__(self, name_file, szise):
 
@@ -67,9 +55,11 @@ class Enemy(Entity):
 # TODO: Figure out if this is smart to have the bullet be an entity. It might be less costly to have it be just a sprite.
 class Bullet(Entity):
     def __init__(self, name_file, szise):
-
+        
         # Parent class
         super().__init__(name_file, szise)
+
+
 
 class Loot(Entity):
     def __init__(self, name_file, szise):
@@ -81,8 +71,23 @@ class Rupee(Loot):
 
 class NormalBullet(Bullet):
     def __init__(self):
+        super().__init__("bulletnormal1.png", 2)
+        self.textures = [arcade.load_texture('bulletnormal1.png')]
+        for i in range(2,5,1):
+            self.textures.append(arcade.load_texture(f'bulletnormal{i}.png'))
+        self.textureticker = 0
+        self.nexttexticker = 0
         
-        super().__init__("Normalbullet.png", 1)
+        
+    def update_animation(self, delta_time):
+        if self.nexttexticker == 10:
+            self.texture = self.textures[self.textureticker]
+            self.nexttexticker = 0
+            if self.textureticker == 3:
+                self.textureticker = 0
+            else:
+                self.textureticker += 1
+        self.nexttexticker +=1
 
 class SlimeEnemy(Enemy):
     def __init__(self):
@@ -97,7 +102,7 @@ class SlimeEnemy(Enemy):
         self.texture = self.textures[0]
         # Set the initial texture
 
-    def update_animation(self, delta_time: float = 1 / 60):
+    def update_animation(self, delta_time: float = 1/60):
 
         # Figure out if we need to flip face left or right
         if self.change_x < 0 and self.enemy_face_direction == RIGHT_FACING:
@@ -535,7 +540,13 @@ class MyGame(arcade.Window):
 
             bullet.change_x = -(unitvectorx * BULLET_SPEED)
             bullet.change_y = -(unitvectory * BULLET_SPEED)
+            inrads = math.atan2(vectorx, vectory)
+            if inrads < 0:
+                inrads = abs(inrads)
+            else:
+                inrads = 2*math.pi-inrads
             
+            bullet.radians = inrads
             self.bullettimer = 0
             self.scene.add_sprite(self.bullet_list, bullet)
 
@@ -608,30 +619,9 @@ class MyGame(arcade.Window):
                 # We already project a point from enemy1, we use this and check if it is inside of another
                 # hitbox, before we apply the velocity.
                 
-            pointx = enemy.center_x+unitvectorx*(enemy.width/2) 
-            pointy = enemy.center_y+unitvectory*(enemy.height/2)
-            #arcade.draw_point(enemy.center_x+unitvectorx*(enemy.width/2),enemy.center_y+unitvectory*(enemy.height/2), arcade.color.RED,10.0)
             
-            for enemyinfront in self.scene[self.enemy_list]:
-                
-                if enemy != enemyinfront:
-                    pointdist = (pointx * enemyinfront.center_x)**2 - (pointy * enemyinfront.center_y)**2
-                    if (pointdist <= enemy.width):
-                        enemyinpoint = True
-                        print(enemy.width**2)
-                        print(pointdist)
-                        print('collision hey')
-                        break
-                
-                
-                        
-            
-            if enemyinpoint:
-                enemy.change_x = 0
-                enemy.change_y = 0
-            else:    
-                enemy.change_x = unitvectorx*ENEMY_SPEED_MULT
-                enemy.change_y = unitvectory*ENEMY_SPEED_MULT
+            enemy.change_x = unitvectorx*ENEMY_SPEED_MULT
+            enemy.change_y = unitvectory*ENEMY_SPEED_MULT
             
 
 def main():
