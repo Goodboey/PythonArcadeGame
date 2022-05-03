@@ -1,6 +1,5 @@
 import cProfile
 from pstats import Stats, SortKey
-from tkinter.tix import MAIN
 import arcade
 import math
 import sys
@@ -11,10 +10,10 @@ import numpy as np
 enemytimer = 200
 SCREEN_WIDTH = 1280
 SCREEN_HEIGHT = 720
-BULLET_TIMER = 0
-BULLET_SPEED = 15
+BULLET_TIMER = 1
+BULLET_SPEED = 8
 PLAYER_MOV_SPEED = 2
-ENEMY_SPAWN_RATE = 10
+ENEMY_SPAWN_RATE = 1
 ENEMY_SPEED_MULT = 1.2
 RIGHT_FACING = 0
 LEFT_FACING = 1
@@ -71,11 +70,11 @@ class Loot(Entity):
 
 class Rupee(Loot):
     def __init__(self):
-        super().__init__("rupee.png", 0.7)
+        super().__init__("Tech.png", 1.6)
 
 class NormalBullet(Bullet):
     def __init__(self):
-        super().__init__("bulletnormal1.png", 2)
+        super().__init__("bulletnormal1.png", 1)
         self.textures = [arcade.load_texture('bulletnormal1.png')]
         for i in range(2,5,1):
             self.textures.append(arcade.load_texture(f'bulletnormal{i}.png'))
@@ -132,14 +131,37 @@ class UziArmRight(Arm):
 class GameOverView(arcade.View):
     def on_show(self):
         
-        arcade.play_sound(GAME_OVER, 0.2,looping= False)
+        arcade.play_sound(GAME_OVER, 0.2, looping= False)
 
     def on_draw(self):
         self.clear()
         arcade.draw_rectangle_filled(center_x=SCREEN_WIDTH/2,center_y=SCREEN_HEIGHT/2, width=10000, height=10000,color= arcade.color.DARK_RED)
         arcade.draw_text('GAME OVER',start_x= SCREEN_WIDTH/6,start_y= SCREEN_HEIGHT/2, font_name='FONT_HERSHEY_SCRIPT_COMPLEX',font_size= 100)
-        
 
+    def on_mouse_press(self, _x, _y, _button, _modifiers):
+        menuview = MenuView()
+        #menuview.setup()
+        self.window.show_view(menuview)
+        
+class MenuView(arcade.View):
+    def on_show(self):
+        arcade.play_sound(MAIN_THEME, 0.2, looping= True)
+
+    def setup(self):
+        True
+
+    def on_draw(self):
+        arcade.draw_rectangle_filled(center_x=SCREEN_WIDTH/2,center_y=SCREEN_HEIGHT/2, width=10000, height=10000,color= arcade.color.DARK_IMPERIAL_BLUE)
+        arcade.draw_lrwh_rectangle_textured(bottom_left_x= SCREEN_WIDTH/3,bottom_left_y= SCREEN_HEIGHT/1.5, width=SCREEN_WIDTH/3,height=SCREEN_HEIGHT/6,texture=arcade.load_texture('Title-logo.png'))
+        arcade.draw_lrwh_rectangle_textured(bottom_left_x= SCREEN_WIDTH/2-49,bottom_left_y= SCREEN_HEIGHT/1.5+9, width=100,height=100,texture=arcade.load_texture('Crosshair.png'))
+
+    def on_update(self, delta_time):
+        bingus = 1
+    
+    def on_mouse_press(self, _x, _y, _button, _modifiers):
+        gameview = GameView()
+        gameview.setup()
+        self.window.show_view(gameview)
 
 class PlayerCharacter(arcade.Sprite):
     """Player Sprite"""
@@ -246,14 +268,16 @@ class GameView(arcade.View):
         self.enemy_list.draw()
         self.bullet_list.draw()
         self.coin_list.draw()
-        score_text = f"GEMZ: {self.score}"
+        score_text = f"{self.score}"
         self.gui_camera.use()
+        arcade.draw_lrwh_rectangle_textured(0, 0, 120, 32, arcade.load_texture('Tech-Counter.png'))
+
         arcade.draw_text(
             score_text,
-            10,
-            10,
-            arcade.csscolor.DARK_BLUE,
-            18,
+            38,
+            8,
+            arcade.csscolor.LIME_GREEN,
+            14
         )
         
 
@@ -700,9 +724,9 @@ def main():
             stats.print_stats()
     else:
         window = arcade.Window(SCREEN_WIDTH, SCREEN_HEIGHT, "Pogman")
-        startview = GameView()
+        startview = MenuView()
         window.show_view(startview)
-        startview.setup()
+        #startview.setup()
         arcade.run()
 
 
