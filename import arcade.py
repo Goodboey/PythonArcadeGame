@@ -10,10 +10,10 @@ import numpy as np
 enemytimer = 200
 SCREEN_WIDTH = 1280
 SCREEN_HEIGHT = 720
-BULLET_TIMER = 1
-BULLET_SPEED = 8
+BULLET_TIMER = 10
+BULLET_SPEED = 15
 PLAYER_MOV_SPEED = 2
-ENEMY_SPAWN_RATE = 1
+ENEMY_SPAWN_RATE = 60
 ENEMY_SPEED_MULT = 1.2
 RIGHT_FACING = 0
 LEFT_FACING = 1
@@ -22,6 +22,7 @@ isProfiling = False
 GUNSHOT_SOUND = arcade.load_sound('Gunshot.wav',False)
 MAIN_THEME = arcade.load_sound('AimbotMaintheme.wav')
 GAME_OVER = arcade.load_sound('gameover.wav')
+WAVE_SONG = arcade.load_sound('Wavesong.wav')
 
 class Entity(arcade.Sprite):
     def __init__(self, name_file, szise):
@@ -131,21 +132,23 @@ class UziArmRight(Arm):
 class GameOverView(arcade.View):
     def on_show(self):
         
-        arcade.play_sound(GAME_OVER, 0.2, looping= False)
+        self.game_over_sound = arcade.play_sound(GAME_OVER, 0.2, looping= False)
 
     def on_draw(self):
         self.clear()
         arcade.draw_rectangle_filled(center_x=SCREEN_WIDTH/2,center_y=SCREEN_HEIGHT/2, width=10000, height=10000,color= arcade.color.DARK_RED)
         arcade.draw_text('GAME OVER',start_x= SCREEN_WIDTH/6,start_y= SCREEN_HEIGHT/2, font_name='FONT_HERSHEY_SCRIPT_COMPLEX',font_size= 100)
+        arcade.draw_text('Click anywhere to restart', start_x=SCREEN_WIDTH/20,start_y=100,color=arcade.color.WHITE_SMOKE,font_size= 30)
 
     def on_mouse_press(self, _x, _y, _button, _modifiers):
+        arcade.Sound.stop(GAME_OVER, self.game_over_sound)
         menuview = MenuView()
         #menuview.setup()
         self.window.show_view(menuview)
         
 class MenuView(arcade.View):
     def on_show(self):
-        arcade.play_sound(MAIN_THEME, 0.2, looping= True)
+        self.menu_track = arcade.Sound.play(MAIN_THEME, 0.2, loop=True)
 
     def setup(self):
         True
@@ -154,11 +157,13 @@ class MenuView(arcade.View):
         arcade.draw_rectangle_filled(center_x=SCREEN_WIDTH/2,center_y=SCREEN_HEIGHT/2, width=10000, height=10000,color= arcade.color.DARK_IMPERIAL_BLUE)
         arcade.draw_lrwh_rectangle_textured(bottom_left_x= SCREEN_WIDTH/3,bottom_left_y= SCREEN_HEIGHT/1.5, width=SCREEN_WIDTH/3,height=SCREEN_HEIGHT/6,texture=arcade.load_texture('Title-logo.png'))
         arcade.draw_lrwh_rectangle_textured(bottom_left_x= SCREEN_WIDTH/2-49,bottom_left_y= SCREEN_HEIGHT/1.5+9, width=100,height=100,texture=arcade.load_texture('Crosshair.png'))
+        arcade.draw_text('Click anywhere to start!', start_x=SCREEN_WIDTH/3-63,start_y=SCREEN_HEIGHT/2,color=arcade.color.WHITE_SMOKE,font_size= 40)
 
     def on_update(self, delta_time):
-        bingus = 1
+        True
     
     def on_mouse_press(self, _x, _y, _button, _modifiers):
+        arcade.Sound.stop(MAIN_THEME,self.menu_track)
         gameview = GameView()
         gameview.setup()
         self.window.show_view(gameview)
@@ -202,7 +207,7 @@ class GameView(arcade.View):
     def __init__(self):
         super().__init__()
 
-        self.camera = None
+        self.camera = arcade.Camera()
 
         self.enemytimer = ENEMY_SPAWN_RATE
         self.enemycollisioncheckticker = 0
@@ -250,7 +255,7 @@ class GameView(arcade.View):
         self.coinsAlive = 0
         self.bullet_list = arcade.SpriteList()
         self.physics_engine = arcade.PhysicsEngineSimple(self.player_sprite, self.enemy_list)
-        self.main_track = arcade.Sound.play(MAIN_THEME, 0.2, True)
+        self.main_track = arcade.Sound.play(WAVE_SONG, 0.2, loop=True)
         
         pass
 
@@ -713,8 +718,10 @@ class GameView(arcade.View):
 def main():
     if isProfiling == True:
         with cProfile.Profile() as pr:
-            game = MyGame(SCREEN_WIDTH, SCREEN_HEIGHT)
-            game.setup()
+            window = arcade.Window(SCREEN_WIDTH, SCREEN_HEIGHT, "Pogman")
+            startview = MenuView()
+            window.show_view(startview)
+            #startview.setup()
             arcade.run()
         with open('profiling_stats.txt', 'w') as stream:
             stats = Stats(pr, stream=stream)
